@@ -10,16 +10,15 @@ import (
 )
 
 var (
-	addresses       = pflag.StringSlice("addresses", []string{}, "The list of addresses to shard to")
-	pathShardExpr   = pflag.String("path-shard-expression", "", "The path sharding expression, the first group will be used for sharding, if empty, the entire path is used.")
-	address         = pflag.String("address", "localhost:8080", "The <host>:<port> to serve on")
-	pathShardRegexp *regexp.Regexp
+	addresses     = pflag.StringSlice("addresses", []string{}, "The list of addresses to shard to")
+	pathShardExpr = pflag.String("path-shard-expression", "", "The path sharding expression, the first group will be used for sharding, if empty, the entire path is used.")
+	address       = pflag.String("address", "localhost:8080", "The <host>:<port> to serve on")
 )
 
 func main() {
 	pflag.Parse()
 
-	pathShardRegexp = regexp.MustCompile(*pathShardExpr)
+	pathShardRegexp := regexp.MustCompile(*pathShardExpr)
 
 	s := &sharder.Sharder{
 		PathRE: pathShardRegexp,
