@@ -1,15 +1,12 @@
 #!/bin/bash
 
-if [ ! -z "$(git status --porcelain)" ]; then
-    dirty="-dirty"
-fi
-
-version=$(git rev-parse HEAD)
+version=$(git describe --always --dirty)
 
 cp ../bin/server ./server
 
-echo "Building ${version}${dirty}"
+echo "Building brendanburns/sharder:${version}"
 
-docker build -t brendanburns/sharder:${version}${dirty} .
+docker build -t brendanburns/sharder:${version} .
 
 rm ./server
+
