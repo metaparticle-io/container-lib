@@ -6,7 +6,7 @@ metadata:
   resourceVersion: "579"
 spec:
   containers:
-  - image: brendanburns/sharder:5b01f96
+  - image: brendanburns/sharder:b93bb1a
     imagePullPolicy: Always
     name: nginx
     command:
