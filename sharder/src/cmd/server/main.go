@@ -20,7 +20,7 @@ var (
 	pathShardExpr       = pflag.String("path-shard-expression", "", "The path sharding expression, the first group will be used for sharding, if empty, the entire path is used.")
 	address             = pflag.String("address", "localhost:8080", "The <host>:<port> to serve on")
 	kubernetesService   = pflag.String("kubernetes-service", "", "If not empty, the <namespace>/<name> of a Kubernetes service to shard to.  If <namespace> is absent, 'default' is assumed.")
-	kubernetesNamespace = pflag.String("kubernetes-namespace", "", "The namespace of the kubernetes service, only used if --kubernetes-service is set.")
+	kubernetesNamespace = pflag.String("kubernetes-namespace", "default", "The namespace of the kubernetes service, only used if --kubernetes-service is set.")
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 		for ix := range endpoints.Subsets {
 			subset := &endpoints.Subsets[ix]
 			for jx := range subset.Addresses {
-				serverAddresses = append(serverAddresses, fmt.Sprintf("http://%s:%d", subset.Addresses[jx], subset.Ports[0]))
+				serverAddresses = append(serverAddresses, fmt.Sprintf("http://%s:%d", subset.Addresses[jx].IP, subset.Ports[0]))
 			}
 		}
 	} else {
