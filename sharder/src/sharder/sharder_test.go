@@ -56,3 +56,85 @@ func TestShardDistribution(t *testing.T) {
 		}
 	}
 }
+
+func TestDifference(t *testing.T) {
+	tests := []struct {
+		existing []string
+		next     []string
+		add      []string
+		removed  []string
+		name     string
+	}{
+		{
+			[]string{"a", "b"},
+			[]string{},
+			[]string{},
+			[]string{"a", "b"},
+			"delete all",
+		},
+		{
+			[]string{},
+			[]string{"a", "b"},
+			[]string{"a", "b"},
+			[]string{},
+			"add all",
+		},
+		{
+			[]string{"a", "b"},
+			[]string{"a", "b"},
+			[]string{},
+			[]string{},
+			"do nothing",
+		},
+		{
+			[]string{"a", "b"},
+			[]string{"a", "b", "c"},
+			[]string{"c"},
+			[]string{},
+			"add one",
+		},
+		{
+			[]string{"a", "b", "c"},
+			[]string{"a", "b"},
+			[]string{},
+			[]string{"c"},
+			"remove one",
+		},
+		{
+			[]string{"a", "b", "c"},
+			[]string{"a", "b", "d"},
+			[]string{"d"},
+			[]string{"c"},
+			"both",
+		},
+	}
+
+	for _, test := range tests {
+		added := map[string]bool{}
+		deleted := map[string]bool{}
+		difference(test.existing, test.next,
+			func(str string) {
+				added[str] = true
+			},
+			func(str string) {
+				deleted[str] = true
+			})
+		if len(added) != len(test.add) {
+			t.Errorf("unexpected lengths %d vs %d in %s", len(added), len(test.add), test.name)
+		}
+		for _, str := range test.add {
+			if !added[str] {
+				t.Errorf("failed to find %s in %s", str, test.name)
+			}
+		}
+
+		if len(deleted) != len(test.removed) {
+			t.Errorf("unexpected lengths %d vs %d in %s", len(deleted), len(test.removed), test.name)
+		}
+		for _, str := range test.removed {
+			if !deleted[str] {
+				t.Errorf("failed to find %s in %s", str, test.name)
+			}
+		}
+	}
+}

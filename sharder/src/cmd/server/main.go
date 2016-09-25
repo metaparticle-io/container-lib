@@ -46,6 +46,7 @@ func main() {
 
 	s := &sharder.Sharder{
 		PathRE: pathShardRegexp,
+		Scheme: "http",
 	}
 
 	var serverAddresses []string
