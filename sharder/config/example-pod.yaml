@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sharder
+  namespace: default
+  resourceVersion: "579"
+spec:
+  containers:
+    - image: brendanburns/sharder:b3764cd
+    imagePullPolicy: Always
+    name: nginx
+    command:
+    - "/server"
+    - "--address=127.0.0.1:8080"
+    - "--kubernetes-namespace=default"
+    - "--kubernetes-service=nginx"
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: 2016-09-25T04:18:57Z
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: 2016-09-25T04:19:12Z
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: 2016-09-25T04:18:57Z
+    status: "True"
+    type: PodScheduled
