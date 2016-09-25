@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"sharder"
+	"time"
 
 	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/rest"
@@ -23,10 +24,29 @@ var (
 	kubernetesNamespace = pflag.String("kubernetes-namespace", "default", "The namespace of the kubernetes service, only used if --kubernetes-service is set.")
 )
 
+func getKubernetesAddresses(clientset *kubernetes.Clientset) ([]string, error) {
+	endpoints, err := clientset.Core().Endpoints(*kubernetesNamespace).Get(*kubernetesService)
+	if err != nil {
+		return nil, err
+	}
+	result := []string{}
+	for ix := range endpoints.Subsets {
+		subset := &endpoints.Subsets[ix]
+		for jx := range subset.Addresses {
+			result = append(result, fmt.Sprintf("http://%s:%d", subset.Addresses[jx].IP, subset.Ports[0].Port))
+		}
+	}
+	return result, nil
+}
+
 func main() {
 	pflag.Parse()
 
 	pathShardRegexp := regexp.MustCompile(*pathShardExpr)
+
+	s := &sharder.Sharder{
+		PathRE: pathShardRegexp,
+	}
 
 	var serverAddresses []string
 	if len(*addresses) > 0 {
@@ -43,17 +63,19 @@ func main() {
 			glog.Errorf("Error contacting server: %v", err)
 			os.Exit(1)
 		}
-		endpoints, err := clientset.Core().Endpoints(*kubernetesNamespace).Get(*kubernetesService)
+		serverAddresses, err = getKubernetesAddresses(clientset)
 		if err != nil {
 			glog.Errorf("Error contacting server: %v", err)
 			os.Exit(1)
 		}
-		for ix := range endpoints.Subsets {
-			subset := &endpoints.Subsets[ix]
-			for jx := range subset.Addresses {
-				serverAddresses = append(serverAddresses, fmt.Sprintf("http://%s:%d", subset.Addresses[jx].IP, subset.Ports[0].Port))
+		go func() {
+			// TODO: use watch here
+			ticker := time.Tick(time.Second * 5)
+			for range ticker {
+				s.Addresses, err = getKubernetesAddresses(clientset)
+				glog.Infof("Sharder updating, spreading load to %v", s.Addresses)
 			}
-		}
+		}()
 	} else {
 		fmt.Printf("Either --addresses or --kubernetes-service are required.\n")
 		os.Exit(1)
@@ -61,10 +83,7 @@ func main() {
 
 	glog.Infof("Sharder starting, spreading load to %v", serverAddresses)
 
-	s := &sharder.Sharder{
-		PathRE:    pathShardRegexp,
-		Addresses: serverAddresses,
-	}
+	s.Addresses = serverAddresses
 
 	proxy := &httputil.ReverseProxy{
 		Director: s.DirectorFn,
