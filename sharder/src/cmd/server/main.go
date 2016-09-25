@@ -51,7 +51,7 @@ func main() {
 		for ix := range endpoints.Subsets {
 			subset := &endpoints.Subsets[ix]
 			for jx := range subset.Addresses {
-				serverAddresses = append(serverAddresses, fmt.Sprintf("http://%s:%d", subset.Addresses[jx].IP, subset.Ports[0]))
+				serverAddresses = append(serverAddresses, fmt.Sprintf("http://%s:%d", subset.Addresses[jx].IP, subset.Ports[0].Port))
 			}
 		}
 	} else {
