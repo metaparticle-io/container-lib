@@ -72,8 +72,13 @@ func main() {
 			// TODO: use watch here
 			ticker := time.Tick(time.Second * 5)
 			for range ticker {
-				s.Addresses, err = getKubernetesAddresses(clientset)
-				glog.Infof("Sharder updating, spreading load to %v", s.Addresses)
+				addresses, err := getKubernetesAddresses(clientset)
+				if err != nil {
+					glog.Errorf("Error getting addresses: %v", err)
+					continue
+				}
+				glog.Infof("Sharder updating, spreading load to %v", addresses)
+				s.UpdateAddresses(addresses)
 			}
 		}()
 	} else {
@@ -83,7 +88,7 @@ func main() {
 
 	glog.Infof("Sharder starting, spreading load to %v", serverAddresses)
 
-	s.Addresses = serverAddresses
+	s.SetAddresses(serverAddresses)
 
 	proxy := &httputil.ReverseProxy{
 		Director: s.DirectorFn,

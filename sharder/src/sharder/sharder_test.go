@@ -4,19 +4,22 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+
+	"github.com/serialx/hashring"
 )
 
 func TestShardRE(t *testing.T) {
+	ring := hashring.New([]string{"foo", "bar", "baz"})
 	re := regexp.MustCompile(".*(/foo/[^/]*)/.*")
-	shard1, err := Shard(re, "/some/path/foo/bar/baz", 3)
+	shard1, err := Shard(re, "/some/path/foo/bar/baz", ring)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	shard2, err := Shard(re, "/some/other/path/foo/bar/baz", 3)
+	shard2, err := Shard(re, "/some/other/path/foo/bar/baz", ring)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	shard3, err := Shard(re, "/some/path/foo/bar/blah", 3)
+	shard3, err := Shard(re, "/some/path/foo/bar/blah", ring)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -31,12 +34,13 @@ func TestShardRE(t *testing.T) {
 
 func TestShardDistribution(t *testing.T) {
 	re := regexp.MustCompile(".*(/foo/[^/]*)/.*")
+	ring := hashring.New([]string{"foo", "bar", "baz"})
 
-	counts := make([]int, 3)
+	counts := map[string]int{}
 
 	for i := 0; i < 1000; i++ {
 		path := fmt.Sprintf("/foo/%d/bar/baz", i)
-		shard, err := Shard(re, path, 3)
+		shard, err := Shard(re, path, ring)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -45,10 +49,10 @@ func TestShardDistribution(t *testing.T) {
 
 	for ix, count := range counts {
 		if count < 200 {
-			t.Errorf("unexpectedly low count for: %d", ix)
+			t.Errorf("unexpectedly low count for: %s", ix)
 		}
 		if count > 400 {
-			t.Errorf("unexpectedly high count for: %d", ix)
+			t.Errorf("unexpectedly high count for: %s", ix)
 		}
 	}
 }

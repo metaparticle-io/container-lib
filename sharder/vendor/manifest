@@ -180,6 +180,12 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "github.com/serialx/hashring",
+			"repository": "https://github.com/serialx/hashring",
+			"revision": "75d57fa264ad17fd929304dfdb02c8e278c5c01c",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/spf13/pflag",
 			"repository": "https://github.com/spf13/pflag",
 			"revision": "c7e63cf4530bcd3ba943729cee0efeff2ebea63f",
