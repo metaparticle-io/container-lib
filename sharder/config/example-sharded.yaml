@@ -1,0 +1,11 @@
+apiVersion: "metaparticle.io/v1"
+kind: "Sharded"
+metadata:
+  name: "foo"
+
+spec:
+  shardedServiceName: "foo"
+  delegateServiceName: "bar"
+  shardCount: 3 
+  shardServerCount: 3
+
