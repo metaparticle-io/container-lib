@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"path"
 	"regexp"
 	"sharder"
 	"time"
 
 	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/rest"
+	"k8s.io/client-go/1.4/tools/clientcmd"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
@@ -22,8 +24,11 @@ var (
 	address             = pflag.String("address", "localhost:8080", "The <host>:<port> to serve on")
 	kubernetesService   = pflag.String("kubernetes-service", "", "If not empty, the <namespace>/<name> of a Kubernetes service to shard to.  If <namespace> is absent, 'default' is assumed.")
 	kubernetesNamespace = pflag.String("kubernetes-namespace", "default", "The namespace of the kubernetes service, only used if --kubernetes-service is set.")
+	kubeconfig          = pflag.String("kubeconfig", path.Join(os.Getenv("HOME"), ".kube/config"), "absolute path to the kubeconfig file")
+	inKubeCluster       = pflag.Bool("in-cluster-kubernetes-config", true, "If true, the default, use the in cluster kubernetes configuration.")
 )
 
+// TODO: this is duplicated, refactor to a common location
 func getKubernetesAddresses(clientset *kubernetes.Clientset) ([]string, error) {
 	endpoints, err := clientset.Core().Endpoints(*kubernetesNamespace).Get(*kubernetesService)
 	if err != nil {
@@ -37,6 +42,22 @@ func getKubernetesAddresses(clientset *kubernetes.Clientset) ([]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func getClientset() (ptr *kubernetes.Clientset, err error) {
+	var config *rest.Config
+	if *inKubeCluster {
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return kubernetes.NewForConfig(config)
 }
 
 func main() {
@@ -53,13 +74,7 @@ func main() {
 	if len(*addresses) > 0 {
 		serverAddresses = *addresses
 	} else if len(*kubernetesService) > 0 {
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			glog.Errorf("Error contacting server: %v", err)
-			os.Exit(1)
-		}
-		// creates the clientset
-		clientset, err := kubernetes.NewForConfig(config)
+		clientset, err = getClientset()
 		if err != nil {
 			glog.Errorf("Error contacting server: %v", err)
 			os.Exit(1)
