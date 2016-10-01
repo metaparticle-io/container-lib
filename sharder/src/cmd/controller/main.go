@@ -57,6 +57,8 @@ type ShardedSpec struct {
 	ShardServerCount    int    `json:"shardServerCount" description: "The number of shard servers"`
 	// TODO: Probably want a full pod spec here
 	DelegateImage string `json:"delegateImage" description: "The delegate image to run"`
+	// TODO: Probably want a full service spec here
+	Port int `json:"port" description: "The port that this serves on"`
 }
 
 type ShardedStatus struct {
@@ -118,35 +120,46 @@ func main() {
 			glog.Errorf("Error decoding list: %v", err)
 			continue
 		}
-		glog.Infof("FOO: %#v\n", list)
+		glog.V(5).Infof("Received shardeds:\n%#v\n", list)
 
 		for ix := range list.Items {
 			item := &list.Items[ix]
-			reconcileItem(clientset, item)
+			if err := reconcileItem(clientset, item); err != nil {
+				glog.Errorf("Failed to reconcile: %v", err)
+				continue
+			}
 		}
 	}
 }
 
-func reconcileItem(clientset *kubernetes.Clientset, sharded *Sharded) {
-	// TODO: Add randomness here
-	deploymentName := sharded.Name
+func labelsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		v2, found := b[k]
+		if !found {
+			return false
+		}
+		if v != v2 {
+			return false
+		}
+	}
+	return true
+}
 
-	d, err := clientset.Extensions().Deployments(sharded.Namespace).Get(deploymentName)
+func reconcileDeployment(clientset *kubernetes.Clientset, namespace, deploymentName string, count int, container *v1.Container, labels map[string]string) error {
+	d, err := clientset.Extensions().Deployments(namespace).Get(deploymentName)
 	if err != nil && !errors.IsNotFound(err) {
-		glog.Errorf("Error reconciling sharded: %v (%v)", sharded, err)
-		return
+		return err
 	}
-	labels := map[string]string{
-		"app": deploymentName,
-	}
-	glog.Infof("Reconciling: %v\n", sharded)
 	if errors.IsNotFound(err) {
 		d = &v1beta1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
 				Name: deploymentName,
 			},
 			Spec: v1beta1.DeploymentSpec{
-				Replicas: util.Int32Ptr(int32(sharded.Spec.ShardServerCount)),
+				Replicas: util.Int32Ptr(int32(count)),
 				Selector: &v1beta1.LabelSelector{
 					MatchLabels: labels,
 				},
@@ -156,33 +169,94 @@ func reconcileItem(clientset *kubernetes.Clientset, sharded *Sharded) {
 					},
 					Spec: v1.PodSpec{
 						Containers: []v1.Container{
-							v1.Container{
-								Name: "shard-server",
-								// TODO: make this a flag
-								Image: "brendanburns/sharder:92d6df4",
-								Command: []string{
-									"/server",
-									"--kubernetes-service=" + sharded.Spec.DelegateServiceName,
-								},
-							},
+							*container,
 						},
 					},
 				},
 			},
 		}
-		_, err := clientset.Extensions().Deployments(sharded.Namespace).Create(d)
-		if err != nil {
-			glog.Errorf("Error creating deployment: %v", err)
-			return
+		if _, err := clientset.Extensions().Deployments(namespace).Create(d); err != nil {
+			return err
 		}
 	} else {
-		if *d.Spec.Replicas != int32(sharded.Spec.ShardServerCount) {
-			d.Spec.Replicas = util.Int32Ptr(int32(sharded.Spec.ShardServerCount))
-			_, err := clientset.Extensions().Deployments(sharded.Namespace).Update(d)
-			if err != nil {
-				glog.Errorf("Error creating deployment: %v", err)
-				return
+		if *d.Spec.Replicas != int32(count) {
+			d.Spec.Replicas = util.Int32Ptr(int32(count))
+			if _, err := clientset.Extensions().Deployments(namespace).Update(d); err != nil {
+				return err
 			}
 		}
 	}
+	return nil
+}
+
+func reconcileService(clientset *kubernetes.Clientset, serviceNamespace, serviceName string, port int32, labels map[string]string) error {
+	s, err := clientset.Core().Services(serviceNamespace).Get(serviceName)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	if err == nil {
+		if labelsEqual(labels, s.Spec.Selector) {
+			return nil
+		}
+		s.Spec.Selector = labels
+		_, err := clientset.Core().Services(serviceNamespace).Update(s)
+		return err
+	}
+	s = &v1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      serviceName,
+			Namespace: serviceNamespace,
+		},
+		Spec: v1.ServiceSpec{
+			Selector: labels,
+			Ports: []v1.ServicePort{
+				v1.ServicePort{
+					Port: port,
+				},
+			},
+		},
+	}
+	return nil
+}
+
+func reconcileItem(clientset *kubernetes.Clientset, sharded *Sharded) error {
+	glog.V(5).Infof("Reconciling: %v\n", sharded)
+	// TODO: Add randomness here
+	deploymentName := sharded.Name + "-sharder"
+	labels := map[string]string{
+		"app": deploymentName,
+	}
+
+	container := v1.Container{
+		Name: "shard-server",
+		// TODO: make this a flag
+		Image: "brendanburns/sharder:92d6df4",
+		Command: []string{
+			"/server",
+			"--kubernetes-service=" + sharded.Spec.DelegateServiceName,
+		},
+	}
+
+	if err := reconcileDeployment(clientset, sharded.Namespace, deploymentName, sharded.Spec.ShardServerCount, &container, labels); err != nil {
+		return err
+	}
+	if err := reconcileService(clientset, sharded.Namespace, sharded.Spec.ShardedServiceName, int32(sharded.Spec.Port), labels); err != nil {
+		return err
+	}
+
+	deploymentName = sharded.Name + "-sharded"
+	labels["app"] = deploymentName
+	container = v1.Container{
+		Name:  "delegate-server",
+		Image: sharded.Spec.DelegateImage,
+	}
+
+	if err := reconcileDeployment(clientset, sharded.Namespace, deploymentName, sharded.Spec.ShardServerCount, &container, labels); err != nil {
+		return err
+	}
+	if err := reconcileService(clientset, sharded.Namespace, sharded.Spec.DelegateServiceName, int32(sharded.Spec.Port), labels); err != nil {
+		return err
+	}
+
+	return nil
 }

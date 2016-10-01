@@ -222,7 +222,7 @@
 		{
 			"importpath": "golang.org/x/net/http2/hpack",
 			"repository": "https://go.googlesource.com/net",
-			"revision": "f09c4662a0bd6bd8943ac7b4931e185df9471da4",
+			"revision": "0d8126fc6144eb5257485c59148128691e8ff849",
 			"branch": "master",
 			"path": "/http2/hpack"
 		},
