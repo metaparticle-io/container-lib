@@ -12,6 +12,7 @@ public class Lock {
     private String name;
     private boolean running;
     private String baseUri;
+    private LockListener listener;
 
     public Lock(String name) {
         this(name, "http://localhost:8080");
@@ -20,6 +21,11 @@ public class Lock {
     public Lock(String name, String baseUri) {
         this.name = name;
         this.baseUri = baseUri;
+        this.listener = null;
+    }
+
+    public void setLockListener(LockListener l) {
+        listener = l;
     }
 
     public synchronized void lock() throws InterruptedException {
@@ -45,12 +51,16 @@ public class Lock {
         }
     }
 
-    public synchronized void unlock() throws InterruptedException {
+    public synchronized void unlock() {
         if (maintainer == null) {
             throw new IllegalStateException("Lock is not held.");
         }
         running = false;
-        maintainer.join(10 * 1000);
+        try {
+            maintainer.join(10 * 1000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     }
 
     private int getLock(String name) throws IOException {
@@ -76,7 +86,10 @@ public class Lock {
     }
 
     private void holdLock(final String name) {
-        running = true;        
+        running = true;
+        if (listener != null) {
+            listener.lockAcquired();
+        }
         maintainer = new Thread(new Runnable() {
             public void run() {
                 while (running) {
@@ -87,8 +100,12 @@ public class Lock {
                         }
                         if (code != 200) {
                             System.out.println("Unexpected status: " + code);
-                            // TODO: Handler Interface here?
-                            System.exit(0);
+                            if (listener != null) {
+                                listener.lockLost();
+                                return;
+                            } else {
+                                System.exit(0);
+                            }
                         }
                         Thread.sleep(10 * 1000);
                     } catch (IOException | InterruptedException ex) {
@@ -96,6 +113,7 @@ public class Lock {
                     }
                 }
                 maintainer = null;
+                listener.lockLost();                
             }
         });
         maintainer.start();
