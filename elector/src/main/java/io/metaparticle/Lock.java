@@ -113,7 +113,9 @@ public class Lock {
                     }
                 }
                 maintainer = null;
-                listener.lockLost();                
+                if (listener != null) {
+                    listener.lockLost();
+                }               
             }
         });
         maintainer.start();
