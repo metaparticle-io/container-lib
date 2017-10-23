@@ -5,6 +5,7 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import java.io.IOException;
+import java.util.Random;
 
 public class Lock {
     // TODO: Switch to a threadpool here?
@@ -14,6 +15,12 @@ public class Lock {
     private String baseUri;
     private LockListener listener;
 
+    // For testing only!
+    // If true, the lock will purposesfully fail to update
+    // itself (and thus loose the lock) 50% of the time.
+    private boolean flaky;
+    private Random rand;
+
     public Lock(String name) {
         this(name, "http://localhost:8080");
     }
@@ -22,6 +29,14 @@ public class Lock {
         this.name = name;
         this.baseUri = baseUri;
         this.listener = null;
+    }
+
+    // Make this lock flaky (e.g. lose the lock)
+    // Warning, should only be used for testing.
+    // Requires a lock listener, or the lock will exist.
+    public void setFlakyLockForTesting() {
+        flaky = true;
+        rand = new Random();
     }
 
     public void setLockListener(LockListener l) {
@@ -42,6 +57,9 @@ public class Lock {
                 if (code == 200) {
                     holdLock(name);
                     return;
+                }
+                if (code != 409) {
+                    System.out.println("Code was: " + code);
                 }
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -101,13 +119,17 @@ public class Lock {
                         if (code != 200) {
                             System.out.println("Unexpected status: " + code);
                             if (listener != null) {
-                                listener.lockLost();
-                                return;
+                                break;
                             } else {
                                 System.exit(0);
                             }
                         }
-                        Thread.sleep(10 * 1000);
+                        // This is only for testing.
+                        if (flaky && rand.nextBoolean()) {
+                            Thread.sleep(50 * 1000);
+                        } else {
+                            Thread.sleep(10 * 1000);
+                        }
                     } catch (IOException | InterruptedException ex) {
                         ex.printStackTrace();
                     }

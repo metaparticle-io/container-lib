@@ -147,8 +147,10 @@ public class LockServer implements Runnable {
                 break;
             }
         } catch (ApiException ex) {
+            ex.printStackTrace();
             sendResponse(ex.getCode(), error(gson, ex.toString()), t);
         } catch (IOException ex) {
+            ex.printStackTrace();
             sendResponse(500, error(gson, "An error occurred: " + ex), t);
         }
     }

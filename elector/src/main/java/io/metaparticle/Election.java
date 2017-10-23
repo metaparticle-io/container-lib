@@ -22,6 +22,13 @@ public class Election implements LockListener, Runnable {
         this.endSignal = new Object();
     }
 
+    // To be used for testing only. Simulates an overloaded
+    // server failing to update in the right time interval and
+    // losing the lock.
+    public void setFlakyElectionForTesting() {
+        this.lock.setFlakyLockForTesting();
+    }
+
     public void shutdown() {
         running = false;
         synchronized (lock) {

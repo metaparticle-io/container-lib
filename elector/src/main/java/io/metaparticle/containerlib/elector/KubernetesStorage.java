@@ -62,9 +62,10 @@ public class KubernetesStorage implements StorageInterface {
         String path = "/apis/metaparticle.io/v1/namespaces/default/locks";
         String method = "POST";
         List<Pair> empty = new ArrayList<Pair>();
+        String[] authNames = new String[] { "BearerToken" };
 
         Call call = client.buildCall(path, method, empty, empty, l, new HashMap<String, String>(),
-                new HashMap<String, Object>(), new String[0], null);
+                new HashMap<String, Object>(), authNames, null);
         return client.handleResponse(call.execute(), Lock.class);
     }
 
@@ -73,9 +74,10 @@ public class KubernetesStorage implements StorageInterface {
         String path = "/apis/metaparticle.io/v1/namespaces/default/locks/" + l.metadata.getName();
         String method = "PUT";
         List<Pair> empty = new ArrayList<Pair>();
-
+        String[] authNames = new String[] { "BearerToken" };
+        
         Call call = client.buildCall(path, method, empty, empty, l, new HashMap<String, String>(),
-                new HashMap<String, Object>(), new String[0], null);
+                new HashMap<String, Object>(), authNames, null);
         return client.handleResponse(call.execute(), Lock.class);
     }
 
@@ -84,9 +86,10 @@ public class KubernetesStorage implements StorageInterface {
         String path = "/apis/metaparticle.io/v1/namespaces/default/locks/" + name;
         String method = "GET";
         List<Pair> empty = new ArrayList<Pair>();
-
+        String[] authNames = new String[] { "BearerToken" };
+        
         Call call = client.buildCall(path, method, empty, empty, null, new HashMap<String, String>(),
-                new HashMap<String, Object>(), new String[0], null);
+                new HashMap<String, Object>(), authNames, null);
         return client.handleResponse(call.execute(), Lock.class);
     }
 }
