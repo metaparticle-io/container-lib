@@ -15,7 +15,7 @@ public class Lock {
     private LockListener listener;
 
     public Lock(String name) {
-        this(name, "http://localhost:8080");
+        this(name, "http://localhost:13131");
     }
 
     public Lock(String name, String baseUri) {
