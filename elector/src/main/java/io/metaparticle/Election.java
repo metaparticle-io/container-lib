@@ -11,7 +11,7 @@ public class Election implements LockListener, Runnable {
     private boolean running;
     
     public Election(String name, Runnable electedAction, Runnable terminateAction) {
-        this(name, "http://localhost:8080", electedAction, terminateAction);
+        this(name, "http://localhost:13131", electedAction, terminateAction);
     }
 
     public Election(String name, String baseUrl, Runnable electedAction, Runnable terminateAction) {

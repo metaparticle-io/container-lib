@@ -27,11 +27,11 @@ public class Main {
         final String hostname = host;
         final long ttl = 30 * 1000;
 
-        LockServer ls = new LockServer(client, hostname, ttl, 8080);        
+        LockServer ls = new LockServer(client, hostname, ttl, 13131);        
         new Thread(ls).start();
         
         // This is just for debugging....
-        LockServer ls2 = new LockServer(client, hostname + "baz", ttl, 8090);
+        LockServer ls2 = new LockServer(client, hostname + "baz", ttl, 13132);
         ls2.run();
     }
 }
