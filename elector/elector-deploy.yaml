@@ -1,0 +1,63 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: 2017-10-21T13:34:00Z
+  generation: 1
+  labels:
+    run: elector
+  name: elector
+  namespace: default
+  resourceVersion: "34821"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/elector
+  uid: 7f6d22f2-b664-11e7-97e2-0800276112c0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      run: elector
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: elector
+    spec:
+      containers:
+      - image: brendanburns/elector
+        imagePullPolicy: Always
+        name: elector
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - image: brendanburns/elector
+        name: example
+        command:
+        - java
+        - -classpath
+        - /main.jar
+        - io.metaparticle.containerlib.elector.examples.ElectionMain
+        - http://localhost:8080
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: 2017-10-21T13:34:00Z
+    lastUpdateTime: 2017-10-21T13:34:00Z
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

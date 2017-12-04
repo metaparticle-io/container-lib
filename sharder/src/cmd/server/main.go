@@ -7,14 +7,15 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sharder"
 	"time"
 
-	"k8s.io/client-go/1.4/kubernetes"
-	"k8s.io/client-go/1.4/rest"
-	"k8s.io/client-go/1.4/tools/clientcmd"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/golang/glog"
+	"github.com/metaparticle-io/container-lib/sharder/src/sharder"
 	"github.com/spf13/pflag"
 )
 
@@ -30,7 +31,7 @@ var (
 
 // TODO: this is duplicated, refactor to a common location
 func getKubernetesAddresses(clientset *kubernetes.Clientset) ([]string, error) {
-	endpoints, err := clientset.Core().Endpoints(*kubernetesNamespace).Get(*kubernetesService)
+	endpoints, err := clientset.Core().Endpoints(*kubernetesNamespace).Get(*kubernetesService, v1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func main() {
 	if len(*addresses) > 0 {
 		serverAddresses = *addresses
 	} else if len(*kubernetesService) > 0 {
-		clientset, err = getClientset()
+		clientset, err := getClientset()
 		if err != nil {
 			glog.Errorf("Error contacting server: %v", err)
 			os.Exit(1)
